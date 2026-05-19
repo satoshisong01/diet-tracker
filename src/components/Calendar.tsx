@@ -180,9 +180,9 @@ export default function Calendar() {
                 </span>
               )}
               {hasData ? (
-                <div className="mt-auto space-y-0.5 text-[10px] leading-tight">
-                  <div className="truncate text-sky-600">🍚 {cell.stat?.intake}</div>
-                  <div className="truncate text-rose-500">🔥 {cell.stat?.exerciseBurn}</div>
+                <div className="mt-auto space-y-0.5 text-[10px] font-medium leading-tight">
+                  <div className="truncate text-sky-600">+{cell.stat?.intake}</div>
+                  <div className="truncate text-rose-500">−{cell.stat?.exerciseBurn}</div>
                 </div>
               ) : (
                 <div className="mt-auto text-[10px] text-slate-300">기록 없음</div>
@@ -194,8 +194,8 @@ export default function Calendar() {
 
       {loading && <p className="mt-2 text-center text-xs text-slate-400">불러오는 중…</p>}
       <p className="mt-3 text-[11px] text-slate-500">
-        <span className="text-sky-600 font-medium">🍚 섭취</span> ·{' '}
-        <span className="text-rose-500 font-medium">🔥 운동 소모</span>. 날짜 아래 숫자는{' '}
+        <span className="text-sky-600 font-medium">+섭취</span> ·{' '}
+        <span className="text-rose-500 font-medium">−운동 소모</span>. 날짜 아래 숫자는{' '}
         <span className="font-medium">{includeBmr ? '섭취 − (운동 + 기초)' : '섭취 − 운동'}</span>{' '}
         결과. <span className="text-emerald-600 font-medium">음수 = 적자</span>,{' '}
         <span className="text-orange-600 font-medium">양수 = 잉여</span>
