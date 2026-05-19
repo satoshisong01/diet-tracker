@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { toLocalDateKey } from '@/lib/date';
 import { formatWeightDelta, kcalToGrams } from '@/lib/weight';
+import { getCached, setCached } from '@/lib/cache';
 
 type WeightLog = { date: string; weightKg: number };
 type WeeklyReport = {
@@ -22,7 +23,8 @@ export default function WeightPanel({
   tdee: number;
   avgKcalBalancePerDay: number;
 }) {
-  const [logs, setLogs] = useState<WeightLog[]>([]);
+  const logsKey = 'weights:logs';
+  const [logs, setLogs] = useState<WeightLog[]>(() => getCached<WeightLog[]>(logsKey) ?? []);
   const [newWeight, setNewWeight] = useState(String(currentWeight));
   const [target, setTarget] = useState(targetWeight !== null ? String(targetWeight) : '');
   const [busy, setBusy] = useState(false);
@@ -34,10 +36,12 @@ export default function WeightPanel({
   async function reloadLogs() {
     const r = await fetch('/api/weights?limit=90');
     const d = await r.json();
-    setLogs((d.logs || []).map((l: { date: string; weightKg: number }) => ({
+    const mapped = (d.logs || []).map((l: { date: string; weightKg: number }) => ({
       date: l.date.slice(0, 10),
       weightKg: l.weightKg,
-    })));
+    }));
+    setCached(logsKey, mapped);
+    setLogs(mapped);
   }
 
   useEffect(() => {

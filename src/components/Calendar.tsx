@@ -2,6 +2,7 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { toLocalDateKey } from '@/lib/date';
+import { useSWR } from '@/lib/cache';
 
 type DayStat = {
   date: string;
@@ -13,15 +14,14 @@ type DayStat = {
 
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
 
+type MonthSummary = { year: number; month: number; bmr: number; days: DayStat[] };
+
 export default function Calendar() {
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [year, setYear] = useState(0);
   const [month, setMonth] = useState(0);
-  const [days, setDays] = useState<DayStat[]>([]);
-  const [bmr, setBmr] = useState<number>(0);
   const [includeBmr, setIncludeBmr] = useState<boolean>(true);
-  const [loading, setLoading] = useState(true);
 
   // 클라이언트 시간 기준으로 초기화 — SSR/CSR hydration mismatch 방지
   useEffect(() => {
@@ -31,28 +31,33 @@ export default function Calendar() {
     setMounted(true);
   }, []);
 
-  useEffect(() => {
-    if (!mounted || year === 0 || month === 0) return;
-    let cancelled = false;
-    setLoading(true);
-    fetch(`/api/summary/month?year=${year}&month=${month}`)
-      .then((r) => r.json())
-      .then((d) => {
-        if (cancelled) return;
-        setDays(d.days || []);
-        setBmr(d.bmr || 0);
-      })
-      .finally(() => !cancelled && setLoading(false));
-    return () => {
-      cancelled = true;
-    };
-  }, [year, month, mounted]);
+  // SWR: 캐시 hit이면 즉시 stale 값 → 백그라운드 갱신
+  const summaryKey =
+    mounted && year && month ? `summary:month:${year}-${month}` : null;
+  const { data: summary, loading } = useSWR<MonthSummary>(summaryKey, () =>
+    fetch(`/api/summary/month?year=${year}&month=${month}`).then((r) => r.json()),
+  );
+  const days: DayStat[] = summary?.days ?? [];
+  const bmr = summary?.bmr ?? 0;
 
   useEffect(() => {
-    fetch('/api/me')
-      .then((r) => r.json())
-      .then((d) => setIncludeBmr(Boolean(d.user?.includeBmr ?? true)));
-  }, []);
+    if (!mounted) return;
+    // /api/me 캐시 사용 → DayDetail/Dashboard에서도 공유
+    import('@/lib/cache').then(({ getCached, setCached }) => {
+      const cached = getCached<{ user: { includeBmr?: boolean } }>('me');
+      if (cached?.user?.includeBmr !== undefined) {
+        setIncludeBmr(Boolean(cached.user.includeBmr));
+      }
+      fetch('/api/me')
+        .then((r) => r.json())
+        .then((d) => {
+          setCached('me', d);
+          if (d.user?.includeBmr !== undefined) {
+            setIncludeBmr(Boolean(d.user.includeBmr));
+          }
+        });
+    });
+  }, [mounted]);
 
   const cells = useMemo(() => {
     const firstDow = new Date(year, month - 1, 1).getDay();

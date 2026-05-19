@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import Link from 'next/link';
 import {
   QUICK_EXERCISES,
@@ -12,6 +12,7 @@ import {
 } from '@/lib/exercises';
 import { compressImage } from '@/lib/image';
 import { formatWeightDelta } from '@/lib/weight';
+import { getCached, setCached, invalidateCache } from '@/lib/cache';
 
 type Food = {
   id: string;
@@ -68,26 +69,41 @@ export default function DayDetail({
   userWeightKg: number;
   dailyDeficit: number;
 }) {
-  const [foods, setFoods] = useState<Food[]>([]);
-  const [exercises, setExercises] = useState<Exercise[]>([]);
-  const [summary, setSummary] = useState<Summary | null>(null);
+  // 캐시에서 stale 데이터 즉시 로드 → 백그라운드 갱신
+  const foodsKey = `foods:${date}`;
+  const exercisesKey = `exercises:${date}`;
+  const summaryKey = `summary:day:${date}`;
+  const [foods, setFoods] = useState<Food[]>(
+    () => getCached<{ entries: Food[] }>(foodsKey)?.entries ?? [],
+  );
+  const [exercises, setExercises] = useState<Exercise[]>(
+    () => getCached<{ entries: Exercise[] }>(exercisesKey)?.entries ?? [],
+  );
+  const [summary, setSummary] = useState<Summary | null>(
+    () => getCached<Summary>(summaryKey) ?? null,
+  );
   const [includeBmr, setIncludeBmr] = useState(initialIncludeBmr);
   const [tip, setTip] = useState<string | null>(null);
 
-  async function reload() {
+  const reload = useCallback(async () => {
     const [f, e, s] = await Promise.all([
       fetch(`/api/foods?date=${date}`).then((r) => r.json()),
       fetch(`/api/exercises?date=${date}`).then((r) => r.json()),
       fetch(`/api/summary/day?date=${date}`).then((r) => r.json()),
     ]);
+    setCached(foodsKey, f);
+    setCached(exercisesKey, e);
+    setCached(summaryKey, s);
     setFoods(f.entries || []);
     setExercises(e.entries || []);
     setSummary(s);
-  }
+    // 음식/운동 변경되면 월별 캘린더 캐시도 무효화 → 캘린더로 돌아가면 fresh fetch
+    invalidateCache('summary:month:');
+  }, [date, foodsKey, exercisesKey, summaryKey]);
 
   useEffect(() => {
     reload();
-  }, [date]);
+  }, [reload]);
 
   async function toggleBmr() {
     const v = !includeBmr;
@@ -495,18 +511,24 @@ function FoodSection({
         )}
         {foods.map((f) => (
           <li key={f.id} className="flex items-center justify-between gap-2 py-2">
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-slate-800">
+            <div className="min-w-0 flex-1 overflow-hidden">
+              <p
+                className="truncate text-sm font-medium text-slate-800"
+                title={`${MEAL_LABELS[f.mealType]} · ${f.name}`}
+              >
                 {MEAL_LABELS[f.mealType]} · {f.name}
               </p>
-              <p className="text-xs text-slate-500">
+              <p className="truncate text-xs text-slate-500">
                 {f.calories}kcal × {f.quantity} ={' '}
                 <span className="font-semibold text-sky-600">
                   {Math.round(f.calories * f.quantity)}kcal
                 </span>
               </p>
             </div>
-            <button onClick={() => remove(f.id)} className="text-xs text-red-500 hover:underline">
+            <button
+              onClick={() => remove(f.id)}
+              className="shrink-0 text-xs text-red-500 hover:underline"
+            >
               삭제
             </button>
           </li>
@@ -717,16 +739,22 @@ function ExerciseSection({
         )}
         {exercises.map((e) => (
           <li key={e.id} className="flex items-center justify-between gap-2 py-2">
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-slate-800">
+            <div className="min-w-0 flex-1 overflow-hidden">
+              <p
+                className="truncate text-sm font-medium text-slate-800"
+                title={`${INTENSITY_LABELS[e.intensity]} · ${e.activity}`}
+              >
                 {INTENSITY_LABELS[e.intensity]} · {e.activity}
               </p>
-              <p className="text-xs text-slate-500">
+              <p className="truncate text-xs text-slate-500">
                 {e.durationMin}분 ·{' '}
                 <span className="font-semibold text-rose-600">{e.caloriesBurned}kcal 소모</span>
               </p>
             </div>
-            <button onClick={() => remove(e.id)} className="text-xs text-red-500 hover:underline">
+            <button
+              onClick={() => remove(e.id)}
+              className="shrink-0 text-xs text-red-500 hover:underline"
+            >
               삭제
             </button>
           </li>
