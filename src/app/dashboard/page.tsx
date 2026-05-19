@@ -35,43 +35,7 @@ export default async function DashboardPage() {
     todayFoods.reduce((s, f) => s + f.calories * f.quantity, 0),
   );
 
-  // 최근 7일 평균 에너지 균형 — WeightPanel 페이스 예측용
-  const weekAgo = new Date();
-  weekAgo.setDate(weekAgo.getDate() - 7);
-  weekAgo.setHours(0, 0, 0, 0);
-  const [weekFoods, weekExercises] = await Promise.all([
-    prisma.foodEntry.findMany({
-      where: { userId: user.id, date: { gte: weekAgo } },
-      select: { date: true, calories: true, quantity: true },
-    }),
-    prisma.exerciseEntry.findMany({
-      where: { userId: user.id, date: { gte: weekAgo } },
-      select: { date: true, caloriesBurned: true },
-    }),
-  ]);
-  const intakeByDay = new Map<string, number>();
-  for (const f of weekFoods) {
-    const k = f.date.toISOString().slice(0, 10);
-    intakeByDay.set(k, (intakeByDay.get(k) ?? 0) + f.calories * f.quantity);
-  }
-  const burnByDay = new Map<string, number>();
-  for (const e of weekExercises) {
-    const k = e.date.toISOString().slice(0, 10);
-    burnByDay.set(k, (burnByDay.get(k) ?? 0) + e.caloriesBurned);
-  }
-  const allDays = new Set([...intakeByDay.keys(), ...burnByDay.keys()]);
-  const balances: number[] = [];
-  for (const k of allDays) {
-    const intake = intakeByDay.get(k) ?? 0;
-    if (intake === 0) continue; // 음식 기록 있는 날만 평균에 반영
-    const burn = burnByDay.get(k) ?? 0;
-    balances.push(tdee + burn - intake);
-  }
-  const avgKcalBalancePerDay =
-    balances.length > 0
-      ? Math.round(balances.reduce((a, b) => a + b, 0) / balances.length)
-      : 0;
-
+  // (avgKcalBalancePerDay는 WeightPanel이 /api/summary/pace 로 별도 fetch)
   const targetIntake = Math.max(0, tdee - user.dailyDeficit); // 사용자가 설정한 목표 섭취량
   const remainingBmr = bmr - todayIntake;
   const remainingTdee = tdee - todayIntake;
@@ -117,7 +81,6 @@ export default async function DashboardPage() {
             currentWeight={user.weightKg}
             targetWeight={user.targetWeightKg}
             tdee={tdee}
-            avgKcalBalancePerDay={avgKcalBalancePerDay}
           />
         </div>
 

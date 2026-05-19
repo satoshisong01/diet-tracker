@@ -16,13 +16,27 @@ export default function WeightPanel({
   currentWeight,
   targetWeight,
   tdee,
-  avgKcalBalancePerDay,
 }: {
   currentWeight: number;
   targetWeight: number | null;
   tdee: number;
-  avgKcalBalancePerDay: number;
 }) {
+  // avg energy balance — 캐시에서 즉시 → 백그라운드 갱신
+  const paceCacheKey = 'summary:pace';
+  const [avgKcalBalancePerDay, setAvgKcalBalancePerDay] = useState<number>(
+    () => getCached<{ avgKcalBalancePerDay: number }>(paceCacheKey)?.avgKcalBalancePerDay ?? 0,
+  );
+  useEffect(() => {
+    fetch('/api/summary/pace')
+      .then((r) => r.json())
+      .then((d) => {
+        if (typeof d?.avgKcalBalancePerDay === 'number') {
+          setCached(paceCacheKey, d);
+          setAvgKcalBalancePerDay(d.avgKcalBalancePerDay);
+        }
+      })
+      .catch(() => undefined);
+  }, []);
   const logsKey = 'weights:logs';
   const [logs, setLogs] = useState<WeightLog[]>(() => getCached<WeightLog[]>(logsKey) ?? []);
   const [newWeight, setNewWeight] = useState(String(currentWeight));
