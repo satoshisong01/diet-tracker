@@ -405,7 +405,7 @@ function FoodSection({
 
   return (
     <div className="card">
-      <h3 className="mb-2 text-base font-bold text-slate-800">🍱 음식 (섭취 칼로리)</h3>
+      <h3 className="mb-2 text-base font-bold text-slate-800">🍚 음식 (섭취 칼로리)</h3>
 
       <div className="space-y-2">
         <div className="flex gap-2">
