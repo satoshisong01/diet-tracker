@@ -1,0 +1,121 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["multiSchema"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["diet"]
+}
+
+enum Gender {
+  male
+  female
+  other
+
+  @@schema("diet")
+}
+
+enum ActivityLevel {
+  sedentary
+  light
+  moderate
+  active
+  very_active
+
+  @@schema("diet")
+}
+
+enum MealType {
+  breakfast
+  lunch
+  dinner
+  snack
+
+  @@schema("diet")
+}
+
+enum ExerciseIntensity {
+  light
+  moderate
+  vigorous
+
+  @@schema("diet")
+}
+
+model User {
+  id            String        @id @default(cuid())
+  email         String        @unique
+  passwordHash  String        @map("password_hash")
+  name          String
+  heightCm      Float         @map("height_cm")
+  weightKg      Float         @map("weight_kg")
+  age           Int
+  gender        Gender        @default(other)
+  activityLevel ActivityLevel @default(light) @map("activity_level")
+  includeBmr    Boolean       @default(true) @map("include_bmr")
+  // 다이어트 목표 — TDEE에서 이만큼 칼로리 적자 (예: 500=500kcal 적자, 0=유지)
+  dailyDeficit  Int           @default(500) @map("daily_deficit")
+  // 목표 체중 (선택) — null이면 카운트다운 비표시
+  targetWeightKg Float?       @map("target_weight_kg")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  foodEntries     FoodEntry[]
+  exerciseEntries ExerciseEntry[]
+  weightLogs      WeightLog[]
+
+  @@map("users")
+  @@schema("diet")
+}
+
+model FoodEntry {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  date      DateTime @db.Date
+  name      String
+  calories  Float
+  quantity  Float    @default(1)
+  mealType  MealType @default(snack) @map("meal_type")
+  note      String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, date])
+  @@map("food_entries")
+  @@schema("diet")
+}
+
+model ExerciseEntry {
+  id             String            @id @default(cuid())
+  userId         String            @map("user_id")
+  date           DateTime          @db.Date
+  activity       String
+  durationMin    Int               @map("duration_min")
+  intensity      ExerciseIntensity @default(moderate)
+  caloriesBurned Float             @map("calories_burned")
+  note           String?
+  createdAt      DateTime          @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, date])
+  @@map("exercise_entries")
+  @@schema("diet")
+}
+
+model WeightLog {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  date      DateTime @db.Date
+  weightKg  Float    @map("weight_kg")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@map("weight_logs")
+  @@schema("diet")
+}

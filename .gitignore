@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+.next/
+out/
+build/
+dist/
+
+# Environment & secrets (NEVER COMMIT)
+.env
+.env*.local
+
+# Logs / system
+*.log
+.DS_Store
+.vscode/
+.idea/
+
+# Prisma migrations (we use db push)
+prisma/migrations/
+
+# next-pwa generated files (regenerated on build)
+public/sw.js
+public/sw.js.map
+public/workbox-*.js
+public/workbox-*.js.map
+public/fallback-*.js
+
+# bkit & Playwright test artifacts
+.bkit/
+.playwright-mcp/
+test-queries.json
