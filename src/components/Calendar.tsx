@@ -152,7 +152,7 @@ export default function Calendar() {
 
       <div className="mt-1 grid grid-cols-7 gap-1">
         {cells.map((cell, idx) => {
-          if (!cell) return <div key={idx} className="h-20 rounded-md bg-slate-50/50 sm:h-24" />;
+          if (!cell) return <div key={idx} className="h-24 rounded-md bg-slate-50/50 sm:h-28" />;
           const isToday = cell.date === todayKey;
           const net = includeBmr ? cell.stat?.netWithBmr : cell.stat?.netWithoutBmr;
           const hasData = cell.stat && (cell.stat.intake > 0 || cell.stat.exerciseBurn > 0);
@@ -160,31 +160,29 @@ export default function Calendar() {
             <button
               key={cell.date}
               onClick={() => router.push(`/day/${cell.date}`)}
-              className={`flex h-20 flex-col rounded-md border p-1 text-left transition-colors sm:h-24 ${
+              className={`flex h-24 flex-col rounded-md border p-1 text-left transition-colors sm:h-28 ${
                 isToday
                   ? 'border-brand-500 bg-brand-50'
                   : 'border-slate-200 bg-white hover:bg-slate-50'
               }`}
             >
-              <div className="flex items-center justify-between">
-                <span className={`text-xs font-semibold ${isToday ? 'text-brand-700' : 'text-slate-700'}`}>
-                  {Number(cell.date.split('-')[2])}
+              <span className={`text-xs font-semibold leading-tight ${isToday ? 'text-brand-700' : 'text-slate-700'}`}>
+                {Number(cell.date.split('-')[2])}
+              </span>
+              {hasData && (
+                <span
+                  className={`mt-0.5 text-[10px] font-bold leading-tight ${
+                    (net ?? 0) <= 0 ? 'text-emerald-600' : 'text-orange-600'
+                  }`}
+                >
+                  {(net ?? 0) > 0 ? '+' : ''}
+                  {net ?? 0}
                 </span>
-                {hasData && (
-                  <span
-                    className={`text-[10px] font-bold ${
-                      (net ?? 0) <= 0 ? 'text-emerald-600' : 'text-orange-600'
-                    }`}
-                  >
-                    {(net ?? 0) > 0 ? '+' : ''}
-                    {net ?? 0}
-                  </span>
-                )}
-              </div>
+              )}
               {hasData ? (
                 <div className="mt-auto space-y-0.5 text-[10px] leading-tight">
-                  <div className="truncate text-sky-600">🍱 {cell.stat?.intake}</div>
-                  <div className="truncate text-rose-500">🔥 {cell.stat?.exerciseBurn}</div>
+                  <div className="truncate text-sky-600">🍱 +{cell.stat?.intake}</div>
+                  <div className="truncate text-rose-500">🔥 −{cell.stat?.exerciseBurn}</div>
                 </div>
               ) : (
                 <div className="mt-auto text-[10px] text-slate-300">기록 없음</div>
@@ -196,9 +194,10 @@ export default function Calendar() {
 
       {loading && <p className="mt-2 text-center text-xs text-slate-400">불러오는 중…</p>}
       <p className="mt-3 text-[11px] text-slate-500">
-        🍱 섭취 / 🔥 운동 소모. 우측 상단 숫자는{' '}
-        <span className="font-medium">{includeBmr ? '섭취 - (운동 + 기초대사량)' : '섭취 - 운동'}</span>{' '}
-        값입니다. (음수=칼로리 적자, 양수=잉여)
+        🍱 섭취 (+) · 🔥 운동 소모 (−). 날짜 아래 숫자는{' '}
+        <span className="font-medium">{includeBmr ? '섭취 − (운동 + 기초)' : '섭취 − 운동'}</span>{' '}
+        결과. <span className="text-emerald-600 font-medium">음수 = 적자</span>,{' '}
+        <span className="text-orange-600 font-medium">양수 = 잉여</span>
       </p>
     </div>
   );

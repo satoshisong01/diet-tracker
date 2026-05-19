@@ -13,6 +13,19 @@ type Profile = {
   dailyDeficit: number;
 };
 
+// 폼은 사용자 입력을 그대로 string으로 보존 — controlled <input type="number">에서
+// 빈 값을 0으로 강제하지 않도록 (앞에 0이 고정되는 버그 방지).
+type ProfileFormState = {
+  name: string;
+  heightCm: string;
+  weightKg: string;
+  age: string;
+  gender: Profile['gender'];
+  activityLevel: Profile['activityLevel'];
+  includeBmr: boolean;
+  dailyDeficit: string;
+};
+
 const ACTIVITY_OPTIONS = [
   { v: 'sedentary', label: '거의 안 함 (사무직)' },
   { v: 'light', label: '가벼운 활동 (주 1-3회)' },
@@ -21,16 +34,29 @@ const ACTIVITY_OPTIONS = [
   { v: 'very_active', label: '매우 많음 (고강도 매일)' },
 ];
 
+function toFormState(p: Profile): ProfileFormState {
+  return {
+    name: p.name,
+    heightCm: String(p.heightCm),
+    weightKg: String(p.weightKg),
+    age: String(p.age),
+    gender: p.gender,
+    activityLevel: p.activityLevel,
+    includeBmr: p.includeBmr,
+    dailyDeficit: String(p.dailyDeficit),
+  };
+}
+
 export default function ProfileForm({ initial }: { initial: Profile }) {
-  const [form, setForm] = useState<Profile>(initial);
+  const [form, setForm] = useState<ProfileFormState>(() => toFormState(initial));
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
 
-  function update<K extends keyof Profile>(key: K, val: Profile[K]) {
+  function update<K extends keyof ProfileFormState>(key: K, val: ProfileFormState[K]) {
     setForm((p) => ({ ...p, [key]: val }));
   }
 
-  // 현재 저장값과 폼 입력값 각각의 BMR/TDEE 비교
+  // 현재 저장값 (initial)의 BMR/TDEE
   const initialBmr = useMemo(
     () =>
       calcBmr({
@@ -45,6 +71,7 @@ export default function ProfileForm({ initial }: { initial: Profile }) {
     () => calcTdee(initialBmr, initial.activityLevel),
     [initialBmr, initial.activityLevel],
   );
+  // 폼 입력값의 BMR/TDEE (파싱 실패 시 0 → BMR도 0으로 안전)
   const previewBmr = useMemo(
     () =>
       calcBmr({
@@ -62,25 +89,47 @@ export default function ProfileForm({ initial }: { initial: Profile }) {
   const bmrDelta = previewBmr - initialBmr;
   const tdeeDelta = previewTdee - initialTdee;
   const hasChange =
-    form.weightKg !== initial.weightKg ||
-    form.heightCm !== initial.heightCm ||
-    form.age !== initial.age ||
+    Number(form.weightKg) !== initial.weightKg ||
+    Number(form.heightCm) !== initial.heightCm ||
+    Number(form.age) !== initial.age ||
     form.gender !== initial.gender ||
     form.activityLevel !== initial.activityLevel;
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
-    setSaving(true);
     setMsg(null);
+
+    const heightCm = Number(form.heightCm);
+    const weightKg = Number(form.weightKg);
+    const age = Number(form.age);
+    const dailyDeficit = Number(form.dailyDeficit) || 0;
+    if (!heightCm || heightCm < 50 || heightCm > 280) {
+      setMsg({ kind: 'err', text: '키는 50~280cm 사이로 입력해주세요.' });
+      return;
+    }
+    if (!weightKg || weightKg < 20 || weightKg > 400) {
+      setMsg({ kind: 'err', text: '몸무게는 20~400kg 사이로 입력해주세요.' });
+      return;
+    }
+    if (!age || age < 5 || age > 120) {
+      setMsg({ kind: 'err', text: '나이는 5~120 사이로 입력해주세요.' });
+      return;
+    }
+
+    setSaving(true);
     try {
       const res = await fetch('/api/me', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ...form,
-          heightCm: Number(form.heightCm),
-          weightKg: Number(form.weightKg),
-          age: Number(form.age),
+          name: form.name,
+          heightCm,
+          weightKg,
+          age,
+          gender: form.gender,
+          activityLevel: form.activityLevel,
+          includeBmr: form.includeBmr,
+          dailyDeficit,
         }),
       });
       const data = await res.json();
@@ -97,16 +146,22 @@ export default function ProfileForm({ initial }: { initial: Profile }) {
     <form onSubmit={save} className="card flex flex-col gap-4">
       <div>
         <label className="label">이름</label>
-        <input className="input" value={form.name} onChange={(e) => update('name', e.target.value)} required />
+        <input
+          className="input"
+          value={form.name}
+          onChange={(e) => update('name', e.target.value)}
+          required
+        />
       </div>
       <div className="grid gap-3 sm:grid-cols-3">
         <div>
           <label className="label">키 (cm)</label>
           <input
             type="number"
+            inputMode="decimal"
             className="input"
             value={form.heightCm}
-            onChange={(e) => update('heightCm', Number(e.target.value))}
+            onChange={(e) => update('heightCm', e.target.value)}
             min={50}
             max={280}
             step="0.1"
@@ -117,9 +172,10 @@ export default function ProfileForm({ initial }: { initial: Profile }) {
           <label className="label">몸무게 (kg)</label>
           <input
             type="number"
+            inputMode="decimal"
             className="input"
             value={form.weightKg}
-            onChange={(e) => update('weightKg', Number(e.target.value))}
+            onChange={(e) => update('weightKg', e.target.value)}
             min={20}
             max={400}
             step="0.1"
@@ -130,9 +186,10 @@ export default function ProfileForm({ initial }: { initial: Profile }) {
           <label className="label">나이</label>
           <input
             type="number"
+            inputMode="numeric"
             className="input"
             value={form.age}
-            onChange={(e) => update('age', Number(e.target.value))}
+            onChange={(e) => update('age', e.target.value)}
             min={5}
             max={120}
             required
@@ -182,9 +239,10 @@ export default function ProfileForm({ initial }: { initial: Profile }) {
         <label className="label">🎯 다이어트 일일 칼로리 적자 목표 (kcal)</label>
         <input
           type="number"
+          inputMode="numeric"
           className="input"
           value={form.dailyDeficit}
-          onChange={(e) => update('dailyDeficit', Number(e.target.value))}
+          onChange={(e) => update('dailyDeficit', e.target.value)}
           min={0}
           max={1500}
           step={50}

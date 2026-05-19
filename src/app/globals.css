@@ -32,6 +32,15 @@ html, body {
 .input {
   @apply w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500;
 }
+/* number 인풋에서 스피너 화살표 숨김 (모바일 더블 텍스트 + 데스크톱 잘못된 휠 변경 방지) */
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type='number'] {
+  -moz-appearance: textfield;
+}
 .card {
   @apply rounded-xl border border-slate-200 bg-white p-4 shadow-sm;
 }

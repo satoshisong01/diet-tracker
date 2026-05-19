@@ -151,11 +151,16 @@ export default function CalorieChart({
       <div className="grid grid-cols-3 gap-2 text-center text-xs">
         <div className="rounded-md bg-sky-50 p-2">
           <p className="text-sky-700">평균 섭취</p>
-          <p className="text-lg font-bold text-sky-700">{avgIntake.toLocaleString()}</p>
+          <p className="text-lg font-bold text-sky-700">
+            +{avgIntake.toLocaleString()}
+          </p>
         </div>
         <div className="rounded-md bg-rose-50 p-2">
           <p className="text-rose-700">평균 운동 소모</p>
-          <p className="text-lg font-bold text-rose-700">{avgBurn.toLocaleString()}</p>
+          <p className="text-lg font-bold text-rose-700">
+            {avgBurn > 0 ? '−' : ''}
+            {avgBurn.toLocaleString()}
+          </p>
         </div>
         <div className="rounded-md bg-slate-50 p-2">
           <p className="text-slate-700">기록 일수</p>

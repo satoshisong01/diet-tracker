@@ -126,22 +126,30 @@ export default function DayDetail({
             </label>
           </div>
           <div className="grid gap-2 sm:grid-cols-4">
-            <Stat label="섭취" value={summary.intake} color="sky" />
+            <Stat label="섭취" value={summary.intake} color="sky" signMode="intake" />
             <Stat
               label={includeBmr ? '소모 (운동+기초)' : '소모 (운동)'}
               value={burn}
               color="rose"
+              signMode="burn"
+              breakdown={
+                includeBmr
+                  ? `운동 −${summary.exerciseBurn.toLocaleString()} · 기초 −${summary.bmr.toLocaleString()}`
+                  : `운동 −${summary.exerciseBurn.toLocaleString()}`
+              }
             />
             <Stat
-              label="순 칼로리 (섭취-소모)"
+              label="순 칼로리 (섭취−소모)"
               value={net}
               color={net <= 0 ? 'emerald' : 'orange'}
+              signMode="auto"
               hint={net <= 0 ? '칼로리 적자 ✓' : '잉여 칼로리'}
             />
             <Stat
               label={dailyDeficit === 0 ? '유지 대비' : `목표(−${dailyDeficit})까지`}
               value={net + dailyDeficit}
               color="slate"
+              signMode="auto"
               hint="음수면 목표 달성"
             />
           </div>
@@ -219,11 +227,16 @@ function Stat({
   value,
   color,
   hint,
+  signMode = 'auto',
+  breakdown,
 }: {
   label: string;
   value: number;
   color: 'sky' | 'rose' | 'emerald' | 'orange' | 'slate';
   hint?: string;
+  // 'intake' = 항상 + (들어옴), 'burn' = 항상 − (나감), 'auto' = 값의 부호
+  signMode?: 'intake' | 'burn' | 'auto';
+  breakdown?: string;
 }) {
   const colors = {
     sky: 'text-sky-600 bg-sky-50',
@@ -232,13 +245,22 @@ function Stat({
     orange: 'text-orange-600 bg-orange-50',
     slate: 'text-slate-600 bg-slate-50',
   }[color];
+  const abs = Math.abs(value).toLocaleString();
+  const display =
+    signMode === 'intake'
+      ? `+${abs}`
+      : signMode === 'burn'
+        ? `−${abs}`
+        : value > 0
+          ? `+${abs}`
+          : value < 0
+            ? `−${abs}`
+            : abs;
   return (
     <div className={`rounded-lg p-3 ${colors}`}>
       <p className="text-xs font-medium">{label}</p>
-      <p className="mt-0.5 text-2xl font-bold">
-        {value > 0 ? '+' : ''}
-        {value.toLocaleString()}
-      </p>
+      <p className="mt-0.5 text-2xl font-bold">{display}</p>
+      {breakdown && <p className="mt-0.5 text-[10px] opacity-75">{breakdown}</p>}
       <p className="text-[10px] opacity-75">kcal{hint ? ` · ${hint}` : ''}</p>
     </div>
   );
