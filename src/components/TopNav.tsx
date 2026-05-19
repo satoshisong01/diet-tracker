@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { invalidateCache } from '@/lib/cache';
 
 export default function TopNav({ userName }: { userName: string }) {
   const router = useRouter();
@@ -10,6 +11,8 @@ export default function TopNav({ userName }: { userName: string }) {
 
   async function handleLogout() {
     await fetch('/api/auth/logout', { method: 'POST' });
+    // 로그아웃 시 캐시 전체 비움 — 다른 사용자가 같은 기기에서 로그인했을 때 데이터 노출 방지
+    invalidateCache();
     router.push('/login');
     router.refresh();
   }
