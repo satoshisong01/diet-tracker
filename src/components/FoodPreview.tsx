@@ -1,11 +1,7 @@
 'use client';
 import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  EQUIVALENCE_ACTIVITIES,
-  minutesToBurn,
-  formatDuration,
-} from '@/lib/exercises';
+import FoodBurnModal from './FoodBurnModal';
 import { compressImage } from '@/lib/image';
 import { invalidateCache } from '@/lib/cache';
 import { toLocalDateKey } from '@/lib/date';
@@ -33,6 +29,7 @@ export default function FoodPreview({ weightKg }: { weightKg: number }) {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [estimate, setEstimate] = useState<Estimate | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showBurn, setShowBurn] = useState(false);
 
   // 오늘 추가 UI 상태
   const [mealType, setMealType] = useState<MealType>('snack');
@@ -61,6 +58,7 @@ export default function FoodPreview({ weightKg }: { weightKg: number }) {
       const data = await r.json();
       if (!r.ok) throw new Error(data.error || 'AI 추정 실패');
       setEstimate(data.estimate);
+      setShowBurn(true); // 계산 직후 운동 환산 팝업 자동 표시
     } catch (e) {
       setError(e instanceof Error ? e.message : '추정 실패');
     } finally {
@@ -86,6 +84,7 @@ export default function FoodPreview({ weightKg }: { weightKg: number }) {
       const data = await r.json();
       if (!r.ok) throw new Error(data.error || 'AI 이미지 분석 실패');
       setEstimate(data.estimate);
+      setShowBurn(true); // 계산 직후 운동 환산 팝업 자동 표시
     } catch (e) {
       setError(e instanceof Error ? e.message : '추정 실패');
     } finally {
@@ -246,29 +245,23 @@ export default function FoodPreview({ weightKg }: { weightKg: number }) {
             </div>
           </div>
 
-          <div>
-            <p className="text-xs font-medium text-slate-600">
-              ⚖️ 이만큼을 소모하려면 (체중 {weightKg}kg 기준):
-            </p>
-            <ul className="mt-1 grid grid-cols-1 gap-1 sm:grid-cols-2">
-              {EQUIVALENCE_ACTIVITIES.map((a) => {
-                const min = minutesToBurn(estimate.calories, a.met, weightKg);
-                return (
-                  <li
-                    key={a.label}
-                    className="flex items-center justify-between rounded-md bg-slate-50 px-3 py-1.5 text-sm"
-                  >
-                    <span className="flex items-center gap-2 text-slate-700">
-                      <span>{a.emoji}</span>
-                      <span>{a.label}</span>
-                    </span>
-                    <span className="font-semibold text-rose-600">{formatDuration(min)}</span>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
+          <button
+            type="button"
+            onClick={() => setShowBurn(true)}
+            className="btn-secondary w-full text-sm"
+          >
+            🏃 운동으로 환산해서 보기
+          </button>
         </div>
+      )}
+
+      {estimate && showBurn && (
+        <FoodBurnModal
+          foodName={estimate.name}
+          calories={estimate.calories}
+          weightKg={weightKg}
+          onClose={() => setShowBurn(false)}
+        />
       )}
     </div>
   );
